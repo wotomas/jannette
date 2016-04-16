@@ -19,6 +19,12 @@
             <artifactId>jcodec-javase</artifactId>
             <version>0.1.9</version>
         </dependency>
+        <dependency>
+            <groupId>org.boofcv</groupId>
+            <artifactId>all</artifactId>
+            <version>0.23</version>
+        </dependency>
+
     </dependencies>
 
 </project>
