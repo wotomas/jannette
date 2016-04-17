@@ -12,6 +12,7 @@ import boofcv.io.UtilIO;
 import boofcv.io.image.ConvertBufferedImage;
 import boofcv.io.image.UtilImageIO;
 import boofcv.struct.feature.Match;
+import boofcv.struct.image.Color3_F32;
 import boofcv.struct.image.GrayF32;
 
 import javax.imageio.ImageIO;
@@ -19,6 +20,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -27,6 +29,7 @@ import java.util.List;
  * also be very slow to compute, depending on the image and template size.
  *
  * @author Peter Abeles
+ * @modified Jimmy Kim
  */
 public class ObjectFinder {
 
@@ -39,20 +42,28 @@ public class ObjectFinder {
      * @param expectedMatches Number of expected matches it hopes to find
      * @return List of match location and scores
      */
-    private List<Match> findMatches(GrayF32 image, GrayF32 template, GrayF32 mask, int expectedMatches) {
+    private List<Match> findMatches(GrayF32 image, GrayF32 template, GrayF32 mask, int expectedMatches, double threshold) {
         // create template matcher.
-        TemplateMatching<GrayF32> matcher =
-                FactoryTemplateMatching.createMatcher(TemplateScoreType.SUM_DIFF_SQ, GrayF32.class);
+        TemplateMatching<GrayF32> matcher = FactoryTemplateMatching.createMatcher(TemplateScoreType.SUM_DIFF_SQ, GrayF32.class);
 
         // Find the points which match the template the best
         matcher.setTemplate(template, mask,expectedMatches);
         matcher.process(image);
 
-        return matcher.getResults().toList();
-
+        double point = matcher.getResults().get(0).score * -1;
+        double thresholdBottom = threshold * 0.999999;
+        double thresholdTop = threshold * 1.000001;
+        System.out.println("Output the score : " + point + " bottom " + thresholdBottom + " top " + thresholdTop);
+        //1.45 seems to be an adequate threshold
+        if(point >= thresholdBottom && point <= thresholdTop) {
+            return matcher.getResults().toList();
+        } else {
+            return null;
+        }
     }
 
-    public void find(String inputImage, String template, String mask, String outputImage) {
+    public boolean find(String inputImage, String template, String mask, String outputImage, double threshold) {
+        BufferedImage colorInput = UtilImageIO.loadImage(inputImage);
         // Load image and templates
         GrayF32 image = UtilImageIO.loadImage(inputImage, GrayF32.class);
         GrayF32 templateCursor = UtilImageIO.loadImage(template, GrayF32.class);
@@ -62,35 +73,53 @@ public class ObjectFinder {
         BufferedImage output = new BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_RGB);
         ConvertBufferedImage.convertTo(image, output);
         Graphics2D g2 = output.createGraphics();
+        Graphics2D g2Output = colorInput.createGraphics();
 
         //with mask
         g2.setColor(Color.RED);
         g2.setStroke(new BasicStroke(5));
-        drawRectangles(g2, image, templateCursor, maskCursor, 1);
 
+        g2Output.setColor(Color.RED);
+        g2Output.setStroke(new BasicStroke(5));
+        try {
+            List<Match> matches = drawRectangles(g2, image, templateCursor, maskCursor, 1, threshold);
+            if(matches != null) {
+                colorDrawBox(matches, templateCursor, g2Output);
+                ImageIO.write(colorInput, "png", new File(outputImage));
+                return true;
+            }
+        } catch (NullPointerException e) {
+            System.out.println("Can not find image. Try Next Video!");
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Image unable to output!");
+        }
+
+        return false;
         /*
         //without mask
         g2.setColor(Color.BLUE);
         g2.setStroke(new BasicStroke(2));
         drawRectangles(g2, image, templateCursor, null, 1);
         */
-
-        try {
-            ImageIO.write(output, "png", new File(outputImage));
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.out.println("Image unable to outpu!");
-        }
     }
 
 
     /**
      * Helper function will is finds matches and displays the results as colored rectangles
      */
-    private void drawRectangles(Graphics2D g2,
-                                       GrayF32 image, GrayF32 template, GrayF32 mask,
-                                       int expectedMatches) {
-        List<Match> found = findMatches(image, template, mask, expectedMatches);
+    private List<Match> drawRectangles(Graphics2D g2,
+                                            GrayF32 image, GrayF32 template, GrayF32 mask,
+                                            int expectedMatches,
+                                            double threshold) {
+        List<Match> found = findMatches(image, template, mask, expectedMatches, threshold);
+        return found;
+    }
+
+    private boolean colorDrawBox(List<Match> found, GrayF32 template, Graphics2D g2) {
+        if(found == null) {
+            return false;
+        }
 
         int r = 2;
         int w = template.width + 2 * r;
@@ -108,5 +137,7 @@ public class ObjectFinder {
             g2.drawLine(x1, y1, x0, y1);
             g2.drawLine(x0, y1, x0, y0);
         }
+
+        return true;
     }
 }
