@@ -8,6 +8,7 @@
   <title>Be Jannette</title>
   <link href="css/bootstrap.min.css" rel="stylesheet" type="text/css">
   <link href="css/main.css" rel="stylesheet" type="text/css">
+  <link href='https://fonts.googleapis.com/css?family=PT+Serif' rel='stylesheet' type='text/css'>
 </head>
 <body>
   <!-- Navigation -->
@@ -27,38 +28,26 @@
      </div>
      <!-- /.container -->
  </nav>
- <div class="container">
+ <div>
     <!-- 1. The <iframe> (and video player) will replace this <div> tag. -->
-    <div class="row main_display">
-      <div id="player" class="col-md-7"></div>
-      <div class="col-md-5 description_box" id="index_ver">
-        <!--
-        <h3>Tag List <button type="button" class="btn btn-primary pull-right">Save</button></h3>
-        <h3>Tag List <img src="img/pink_button2.png" class="pull-right" onclick="save()"/></h3>
-        -->
-        <h3 style="font-family: 'PT Serif', serif;">Saved Tag Record</h3>
-        <div class="tag_list" style="height:300px;">
-          <ul class="tag_list">
-          </ul>
-        </div>
-
+    <br><br><br><br>
+    <div class="row">
+      <!--<div class="col-md-2"></div>-->
+      <div class="col-md-7">
+        <nav id="player" class="col-md-offset-1"></nav>
+      </div>
+      <!--<div class="col-md-2">-->
+      <div class="col-md-5 description_box" style="margin-left:30px;">
+        <h3 style="font-family: 'PT Serif', serif;">Fashion Details</h3>
       </div>
     </div><br>
-    <div class="jumbotron inputbox" style="font-size:18px;">
+    <div class="display_box" style="font-size:18px;">
       <!--these will only appear when paused-->
-      <div class="row">
-        <div class="col-md-10">
-            <div class="col-md-3">Timestamp:</div>
-            <div class="col-md-9"><p id="timestamp"></p></div><br>
-            <div class="col-md-3">Product Name:</div>
-            <div class="col-md-9"><input type="text" id="product_name" class="form-control"></input></div><br>
-            <div class="col-md-3">Website URL:</div>
-            <div class="col-md-9"><input type="text" id="url" class="col-md-10 form-control"></input></div><br>
-            <div class="col-md-3">Details:</div>
-            <div class="col-md-9"><textarea rows="3" cols="50" id="details" class="form-control"></textarea></div><br>
-        </div>
-        <div class="col-md-2">
-          <img src="img/pink_button.png" style="margin-top:65px;" width="100" height="100" onclick="addProductData()" />
+      <div class="container">
+        <div class="row">
+          <div class="scrolls thumbnails">
+
+          </div>
         </div>
       </div>
     </div>
@@ -78,20 +67,20 @@
 
     //get requried data from firebase.
     var myFirebaseRef = new Firebase("https://jannette.firebaseio.com/");
-    var video_id = 'Qj6VroBwXxs';
-    //var video_id = 'WZ1v3VNJDgQ';
+    //var video_id = 'Qj6VroBwXxs';
+    var video_id = 'oQSm7UhG7bU';
 
     // 3. This function creates an <iframe> (and YouTube player)
     //    after the API code downloads.
     var player;
     function onYouTubeIframeAPIReady() {
       player = new YT.Player('player', {
-        height: '390',
-        width: '640',
+        height: '350',
+        width: '700',
         videoId: video_id,
         events: {
           'onReady': onPlayerReady,
-          'onStateChange': onPlayerStateChange
+          //'onStateChange': onPlayerStateChange
         }
       });
     }
@@ -121,60 +110,48 @@
       player.stopVideo();
     }
 
-    function addProductData(){
-      //reference to firebase
-      var userRef = myFirebaseRef.child("videos/"+video_id);
-      var time = (player.getCurrentTime()).toString().substring(0,5);
-      var _time = ((player.getCurrentTime()).toString()).replace(".","_");
-      var _name = $("input#product_name").val();
-      var _url = $("input#url").val();
-      var _details = $("textarea#details").val();
-
-      /*   add new video
-          var userRef = myFirebaseRef.child("videos");
-          var _product ={};
-          var product={};
-          _product[_time] = {name:_name, url:_url, details:_details};
-          product[video_id] = _product;
-          userRef.update(product);
-      */
-      var _product ={};
-      _product[_time] = {name:_name, url:_url, details:_details};
-      userRef.update(_product);
-
-      //$("ul.tag_list").empty();
-      showList();
-      //display on the Tag List
-      //$("ul.tag_list").replace("<li>"+ time + " sec: "+ _name + " - " + _url+"</li>");
+    function jumpToTimeFrame(timeout){
+      player.seekTo(timeout,true);
     }
 
-    function showList(){
-      $("ul.tag_list").empty();
+    function doubleToSeconds(doubleTime){
+      var minute = doubleTime.toString().split(".")[0];
+      var second = doubleTime.toString().split(".")[1];
+      //19.41 - snoopy
+      //33.03 - black and white vertical stripe
+      //38.23 - black celine tshirt
+      //51.14 - gucci
+
+      return (Number(minute)*60 + Number(second));
+    }
+
+    function showThumbnail(){
       var userRef = myFirebaseRef.child("videos/"+video_id);
       userRef.on("value", function(snapshot){
         var existing_tags = snapshot.val();
         for (var key in existing_tags) {
             // skip loop if the property is from prototype
             if (!existing_tags.hasOwnProperty(key)) continue;
-            test(key);
             var obj = existing_tags[key];
+            console.log(obj);
             var name = obj.name;
             var url = obj.url;
             var time = key.replace("_",".").substring(0,5);
-            $("ul.tag_list").append("<li>"+ time + " sec: "+ name + " - " + url +"</li>");
+            var img_url = obj.imageURL;//'http://i1042.photobucket.com/albums/b429/jkimab/frame978.menStripShirt_zps40qye1qw.png';//obj.imageURL;//
+            $("div.thumbnails").append('<img src=\"' + img_url + '\" onclick=\"jumpToTimeFrame(' + doubleToSeconds(time) +')\" data-toggle=\"tooltip\" title=' + name +'/> &nbsp');
+            //$("div.thumbnails").append('<img src=\"' + img_url + '\" data-toggle=\"tooltip\" title=' + name +'/>');
+            //$("div.thumbnails").append("<p>"+ time + " sec: "+ name + " - " + url +"</p>");
+            //doubleToSeconds  0.32  1.41
         }
       });
     }
 
-
     $(document).ready(function(){
-      //show already existing classification=
-      showList();
+        $('[data-toggle="tooltip"]').tooltip({
+            placement: 'bottom'
+        });
+        showThumbnail();
     });
-
-    function test(value){
-      console.log(value);
-    }
 
   </script>
 </body>
